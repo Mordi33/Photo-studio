@@ -7,13 +7,17 @@ import React, { useState, useCallback } from 'react';
 import * as fabric from 'fabric';
 import { CollageCanvas } from './components/CollageCanvas';
 import { Toolbar } from './components/Toolbar';
-import { Sidebar } from './components/Sidebar';
-import { TEMPLATES, CollageTemplate } from './constants';
+import { CANVAS_FORMATS, CanvasFormat } from './constants';
 import { motion, AnimatePresence } from 'motion/react';
+import { ChevronDown, Settings2 } from 'lucide-react';
 
 export default function App() {
   const [canvas, setCanvas] = useState<fabric.Canvas | null>(null);
-  const [currentTemplate, setCurrentTemplate] = useState<CollageTemplate>(TEMPLATES[0]);
+  const [currentFormat, setCurrentFormat] = useState<CanvasFormat>(CANVAS_FORMATS[0]);
+  const [customWidth, setCustomWidth] = useState(600);
+  const [customHeight, setCustomHeight] = useState(600);
+  const [showFormatMenu, setShowFormatMenu] = useState(false);
+  const [showResolutionSettings, setShowResolutionSettings] = useState(false);
 
   const handleCanvasReady = useCallback((readyCanvas: fabric.Canvas) => {
     setCanvas(readyCanvas);
@@ -32,13 +36,12 @@ export default function App() {
         const data = f.target?.result as string;
         const img = await fabric.FabricImage.fromURL(data);
         
-        // Scale image to fit reasonably
         const scale = Math.min(300 / img.width!, 300 / img.height!);
         img.set({
           scaleX: scale,
           scaleY: scale,
-          left: 150,
-          top: 150,
+          left: customWidth / 4,
+          top: customHeight / 4,
           cornerStyle: 'circle',
           cornerColor: '#18181b',
           cornerStrokeColor: '#ffffff',
@@ -58,8 +61,8 @@ export default function App() {
   const addText = () => {
     if (!canvas) return;
     const text = new fabric.IText('Tapez ici...', {
-      left: 200,
-      top: 200,
+      left: customWidth / 3,
+      top: customHeight / 3,
       fontFamily: 'Inter',
       fontSize: 40,
       fontWeight: 'bold',
@@ -78,8 +81,8 @@ export default function App() {
   const addEmoji = (emoji: string) => {
     if (!canvas) return;
     const text = new fabric.Text(emoji, {
-      left: 250,
-      top: 250,
+      left: customWidth / 2,
+      top: customHeight / 2,
       fontSize: 80,
       cornerStyle: 'circle',
       cornerColor: '#18181b',
@@ -119,15 +122,17 @@ export default function App() {
     link.click();
   };
 
+  const updateFormat = (format: CanvasFormat) => {
+    setCurrentFormat(format);
+    setCustomWidth(format.width);
+    setCustomHeight(format.height);
+    setShowFormatMenu(false);
+  };
+
   return (
     <div className="flex h-screen bg-zinc-50 overflow-hidden">
-      <Sidebar 
-        currentTemplate={currentTemplate} 
-        onSelectTemplate={setCurrentTemplate} 
-      />
-      
       <main className="flex-1 relative flex flex-col">
-        <header className="h-16 border-b border-zinc-200 bg-white flex items-center justify-between px-8">
+        <header className="h-16 border-b border-zinc-200 bg-white flex items-center justify-between px-8 z-40">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 bg-zinc-900 rounded-lg flex items-center justify-center">
               <div className="w-4 h-4 border-2 border-white rounded-sm" />
@@ -135,16 +140,93 @@ export default function App() {
             <h1 className="font-display font-bold text-lg tracking-tight">Collage Studio</h1>
           </div>
           
-          <div className="flex items-center gap-4 text-xs font-medium text-zinc-400 uppercase tracking-widest">
-            <span>600 x 600 px</span>
-            <div className="w-1 h-1 bg-zinc-200 rounded-full" />
-            <span>Format Carré</span>
+          <div className="flex items-center gap-6">
+            <div className="relative">
+              <button 
+                onClick={() => setShowFormatMenu(!showFormatMenu)}
+                className="flex items-center gap-2 px-3 py-1.5 hover:bg-zinc-50 rounded-lg transition-colors text-sm font-semibold text-zinc-700"
+              >
+                {currentFormat.name}
+                <ChevronDown size={16} className={`transition-transform ${showFormatMenu ? 'rotate-180' : ''}`} />
+              </button>
+              
+              <AnimatePresence>
+                {showFormatMenu && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: 10 }}
+                    className="absolute top-full right-0 mt-2 w-48 bg-white border border-zinc-200 rounded-xl shadow-xl overflow-hidden"
+                  >
+                    {CANVAS_FORMATS.map((format) => (
+                      <button
+                        key={format.id}
+                        onClick={() => updateFormat(format)}
+                        className={`w-full px-4 py-2.5 text-left text-sm hover:bg-zinc-50 transition-colors flex items-center justify-between ${currentFormat.id === format.id ? 'bg-zinc-50 font-bold text-zinc-900' : 'text-zinc-600'}`}
+                      >
+                        {format.name}
+                        <span className="text-[10px] text-zinc-400">{format.width}x{format.height}</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+
+            <div className="h-8 w-px bg-zinc-200" />
+
+            <div className="flex items-center gap-4">
+              <button 
+                onClick={() => setShowResolutionSettings(!showResolutionSettings)}
+                className={`p-2 rounded-lg transition-colors ${showResolutionSettings ? 'bg-zinc-900 text-white' : 'hover:bg-zinc-100 text-zinc-500'}`}
+              >
+                <Settings2 size={20} />
+              </button>
+
+              <AnimatePresence>
+                {showResolutionSettings && (
+                  <motion.div 
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="flex items-center gap-3 bg-white border border-zinc-200 p-2 rounded-xl shadow-sm"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase">L</span>
+                      <input 
+                        type="number" 
+                        value={customWidth}
+                        onChange={(e) => setCustomWidth(Number(e.target.value))}
+                        className="w-16 px-2 py-1 bg-zinc-50 border border-zinc-100 rounded text-xs font-bold focus:outline-none focus:border-zinc-900"
+                      />
+                    </div>
+                    <span className="text-zinc-300">×</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-zinc-400 uppercase">H</span>
+                      <input 
+                        type="number" 
+                        value={customHeight}
+                        onChange={(e) => setCustomHeight(Number(e.target.value))}
+                        className="w-16 px-2 py-1 bg-zinc-50 border border-zinc-100 rounded text-xs font-bold focus:outline-none focus:border-zinc-900"
+                      />
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {!showResolutionSettings && (
+                <div className="flex items-center gap-4 text-xs font-medium text-zinc-400 uppercase tracking-widest">
+                  <span>{customWidth} x {customHeight} px</span>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
         <div className="flex-1 overflow-auto">
           <CollageCanvas 
-            template={currentTemplate} 
+            width={customWidth}
+            height={customHeight}
             onCanvasReady={handleCanvasReady} 
           />
         </div>
